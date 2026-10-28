@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SCARS — Car Rental in Kigali</title>
+  <meta name="description" content="SCARS rents clean, reliable cars in Kigali, Rwanda. Airport pickup, self-drive or with a driver, 4x4s for Akagera and Volcanoes. Book on WhatsApp in minutes.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@600;700;800&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Icon sprite (Lucide-style, 2px stroke) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-arrow-down" viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"/></symbol>
+    <symbol id="i-arrow-right" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2"/><circle cx="12" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="12" cy="18" r="2"/><path d="M6 8v8M12 8v8M18 8v4H6"/></symbol>
+    <symbol id="i-fuel" viewBox="0 0 24 24"><path d="M3 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18M2 22h14M7 7h4"/><path d="M15 12h2a2 2 0 0 1 2 2v3a2 2 0 0 0 4 0V9l-3-3"/></symbol>
+    <symbol id="i-bag" viewBox="0 0 24 24"><rect x="4" y="7" width="16" height="14" rx="2"/><path d="M9 7V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3M9 21V7M15 21V7"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></symbol>
+    <symbol id="i-car" viewBox="0 0 24 24"><path d="M19 17h2v-4l-2-5H5L3 13v4h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/><path d="M9 17h6M3 13h18"/></symbol>
+    <symbol id="i-key" viewBox="0 0 24 24"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3L22 7l-3-3"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z"/><path d="m9 12 2 2 4-4"/></symbol>
+    <symbol id="i-plane" viewBox="0 0 24 24"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2Z"/></symbol>
+    <symbol id="i-steering" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="2"/><path d="M12 14v8M10 12H2M14 12h8"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1.9.4 1.8.7 2.7a2 2 0 0 1-.5 2.1L8 9.8a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.7.7a2 2 0 0 1 1.7 2Z"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+    <symbol id="i-whatsapp" viewBox="0 0 24 24"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/><path d="M9.5 9.5c0 3 2 5 5 5l1-1.5-2-1-1 1c-1-.5-1.5-1-2-2l1-1-1-2Z"/></symbol>
+    <symbol id="i-instagram" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17.5 6.5h.01"/></symbol>
+    <symbol id="i-facebook" viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></symbol>
+    <symbol id="i-asterisk" viewBox="0 0 24 24"><path d="M12 2v20M3.3 7l17.4 10M3.3 17 20.7 7"/></symbol>
+  </svg>
+
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="nav" id="top">
+    <div class="container nav__inner">
+      <a href="#top" class="logo" aria-label="SCARS home">SCARS<span class="logo__dot" aria-hidden="true"></span></a>
+      <nav class="nav__links" id="navLinks" aria-label="Main">
+        <a href="#how">How it works</a>
+        <a href="#fleet">Our fleet</a>
+        <a href="#locations">Locations</a>
+        <a href="#" class="btn btn--amber nav__cta-mobile" data-wa>Book on WhatsApp</a>
+      </nav>
+      <a href="#" class="btn btn--amber nav__cta" data-wa>
+        <svg class="ico" aria-hidden="true"><use href="#i-whatsapp"/></svg>Book now
+      </a>
+      <button class="nav__toggle" id="navToggle" aria-expanded="false" aria-controls="navLinks" aria-label="Open menu">
+        <svg class="ico" aria-hidden="true"><use href="#i-menu"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- HERO -->
+    <section class="hero">
+      <div class="hero__glow" aria-hidden="true"></div>
+      <div class="container hero__inner">
+        <h1 class="display hero__title">Premium car<br>rental in Kigali</h1>
+        <p class="hero__sub">Clean, reliable cars delivered to the airport, your hotel or your door. Self-drive or with a local driver.</p>
+
+        <form class="search reveal" id="searchForm" novalidate>
+          <div class="search__tabs" role="radiogroup" aria-label="Rental type">
+            <label class="tab"><input type="radio" name="mode" value="Self-drive" checked><span>Self-drive</span></label>
+            <label class="tab"><input type="radio" name="mode" value="With driver"><span>With driver</span></label>
+          </div>
+          <div class="search__fields">
+            <div class="field">
+              <label for="pickup">Pick-up &amp; return</label>
+              <select id="pickup" name="pickup">
+                <option>Kigali International Airport (KGL)</option>
+                <option>Kigali City Centre</option>
+                <option>Kimihurura</option>
+                <option>Nyarutarama</option>
+                <option>Kacyiru</option>
+                <option>Remera</option>
+                <option>Deliver to my hotel</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="start">Start</label>
+              <input type="datetime-local" id="start" name="start" required aria-describedby="dateError">
+            </div>
+            <div class="field">
+              <label for="end">Return</label>
+              <input type="datetime-local" id="end" name="end" required aria-describedby="dateError">
+            </div>
+            <button type="submit" class="search__btn" aria-label="Check availability on WhatsApp">
+              <svg class="ico" aria-hidden="true"><use href="#i-search"/></svg>
+              <span class="search__btn-label">Check availability</span>
+            </button>
+          </div>
+          <p class="field__error" id="dateError" role="alert"></p>
+        </form>
+      </div>
+
+      <div class="hero__stage">
+        <div class="hero__band" aria-hidden="true"></div>
+        <svg class="spark spark--hero" aria-hidden="true"><use href="#i-asterisk"/></svg>
+        <div class="container">
+          <figure class="hero__car">
+            <img src="images/hero.jpg" alt="White SUV on a red-earth road" width="1800" height="1200" fetchpriority="high">
+          </figure>
+        </div>
+        <a href="#about" class="scroll-cue" aria-label="Scroll to learn more">
+          <svg class="ico" aria-hidden="true"><use href="#i-arrow-down"/></svg>
+        </a>
+      </div>
+    </section>
+
+    <!-- ABOUT -->
+    <section class="about section" id="about">
+      <div class="container about__grid">
+        <div class="about__text reveal">
+          <p class="eyebrow">Made in Kigali</p>
+          <h2 class="display h2">Drive Rwanda<br>your way</h2>
+          <p>SCARS is a Kigali car rental company for visitors, families and businesses. Every car is serviced between rentals, fully insured and ready for city streets or the road to Akagera, Nyungwe and Volcanoes National Park.</p>
+          <p>Book in a couple of minutes on WhatsApp. We meet you at Kigali International Airport, your hotel or anywhere in the city, with clear daily prices in Rwandan francs and no surprise fees.</p>
+          <ul class="stats">
+            <li><strong>40+</strong><span>cars in the fleet</span></li>
+            <li><strong>24/7</strong><span>roadside support</span></li>
+            <li><strong>4.9</strong><span>average guest rating</span></li>
+          </ul>
+          <a href="#fleet" class="btn btn--dark">See all our cars <svg class="ico" aria-hidden="true"><use href="#i-arrow-right"/></svg></a>
+        </div>
+        <figure class="about__img reveal">
+          <img src="images/about.jpg" alt="Car driving along an open road at sunset" width="1200" height="800" loading="lazy">
+          <svg class="spark spark--about" aria-hidden="true"><use href="#i-asterisk"/></svg>
+        </figure>
+      </div>
+    </section>
+
+    <!-- HOW IT WORKS -->
+    <section class="how section" id="how">
+      <div class="container">
+        <h2 class="display h2 center">How it works</h2>
+        <ol class="steps">
+          <li class="step reveal">
+            <span class="step__icon"><svg class="ico" aria-hidden="true"><use href="#i-car"/></svg></span>
+            <span class="step__num">01</span>
+            <h3>Choose your car</h3>
+            <p>Pick from city cars, family SUVs and safari-ready 4x4s. Prices are per day, insurance included.</p>
+          </li>
+          <li class="step reveal">
+            <span class="step__icon"><svg class="ico" aria-hidden="true"><use href="#i-whatsapp"/></svg></span>
+            <span class="step__num">02</span>
+            <h3>Book on WhatsApp</h3>
+            <p>We confirm availability within minutes. Pay by MoMo, card or cash on delivery.</p>
+          </li>
+          <li class="step reveal">
+            <span class="step__icon"><svg class="ico" aria-hidden="true"><use href="#i-key"/></svg></span>
+            <span class="step__num">03</span>
+            <h3>Get the keys</h3>
+            <p>We bring the car to the airport, your hotel or your home, with a full tank and a quick walk-around.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- FLEET -->
+    <section class="fleet section" id="fleet">
+      <div class="container">
+        <h2 class="display h2 center">Pick your car today</h2>
+        <div class="chips" role="group" aria-label="Filter cars by category">
+          <button class="chip is-active" data-filter="all" aria-pressed="true">All</button>
+          <button class="chip" data-filter="economy" aria-pressed="false">Economy</button>
+          <button class="chip" data-filter="suv" aria-pressed="false">SUV</button>
+          <button class="chip" data-filter="4x4" aria-pressed="false">4x4 &amp; Safari</button>
+          <button class="chip" data-filter="luxury" aria-pressed="false">Executive</button>
+        </div>
+        <p class="sr-only" id="fleetStatus" role="status" aria-live="polite"></p>
+        <ul class="fleet__grid" id="fleetGrid"></ul>
+        <p class="fleet__note">Prices per day in Rwandan francs, insurance included. Driver available from 25,000 RWF/day. Weekly and monthly rates on request.</p>
+      </div>
+    </section>
+
+    <!-- PERKS STRIP -->
+    <section class="perks" aria-label="Why SCARS">
+      <div class="container perks__grid">
+        <div class="perk"><svg class="ico" aria-hidden="true"><use href="#i-plane"/></svg><div><strong>Airport delivery</strong><span>Meet &amp; greet at KGL arrivals</span></div></div>
+        <div class="perk"><svg class="ico" aria-hidden="true"><use href="#i-shield"/></svg><div><strong>Fully insured</strong><span>Comprehensive cover on every car</span></div></div>
+        <div class="perk"><svg class="ico" aria-hidden="true"><use href="#i-steering"/></svg><div><strong>Local drivers</strong><span>English, French &amp; Kinyarwanda</span></div></div>
+        <div class="perk"><svg class="ico" aria-hidden="true"><use href="#i-clock"/></svg><div><strong>24/7 support</strong><span>One call, any time, anywhere</span></div></div>
+      </div>
+    </section>
+
+
+    <!-- BRANDS -->
+    <section class="brands" aria-label="Brands in our fleet">
+      <div class="container brands__row">
+        <span>Toyota</span><span>Volkswagen</span><span>Honda</span><span>Ford</span><span>Audi</span><span>Mercedes‑Benz</span>
+      </div>
+    </section>
+
+    <!-- LOCATIONS + CTA -->
+    <section class="cta section" id="locations">
+      <div class="container">
+        <div class="cta__card">
+          <svg class="spark spark--cta" aria-hidden="true"><use href="#i-asterisk"/></svg>
+          <div class="cta__text">
+            <h2 class="display h2">Ready when<br>you land</h2>
+            <p>Tell us where and when. We'll have your car waiting.</p>
+            <ul class="places">
+              <li><svg class="ico" aria-hidden="true"><use href="#i-pin"/></svg>Kigali International Airport</li>
+              <li><svg class="ico" aria-hidden="true"><use href="#i-pin"/></svg>Kigali City Centre (KN 4 Ave)</li>
+              <li><svg class="ico" aria-hidden="true"><use href="#i-pin"/></svg>Kimihurura, Nyarutarama, Kacyiru, Remera</li>
+              <li><svg class="ico" aria-hidden="true"><use href="#i-pin"/></svg>Free delivery to any Kigali hotel</li>
+            </ul>
+            <a href="#" class="btn btn--dark btn--lg" data-wa>
+              <svg class="ico" aria-hidden="true"><use href="#i-whatsapp"/></svg>Chat with us on WhatsApp
+            </a>
+          </div>
+          <div class="chat" aria-hidden="true">
+            <div class="chat__top"><span class="chat__avatar">S</span><div><strong>SCARS Kigali</strong><small>online</small></div></div>
+            <p class="bubble bubble--me">Hi! I'd like a RAV4 from KGL, Fri 10:00 to Mon 18:00.</p>
+            <p class="bubble">Muraho! The RAV4 is available. 3 days × 85,000 RWF. We'll meet you at arrivals.</p>
+            <p class="bubble bubble--me">Perfect, book it.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer__top">
+        <h2 class="display footer__title">Questions? We reply<br>in minutes.</h2>
+        <div class="footer__contact">
+          <a href="#" data-wa><svg class="ico" aria-hidden="true"><use href="#i-whatsapp"/></svg><span data-phone>+250 788 000 000</span></a>
+          <a href="tel:+250788000000"><svg class="ico" aria-hidden="true"><use href="#i-phone"/></svg>Call us</a>
+          <a href="mailto:hello@scars.rw"><svg class="ico" aria-hidden="true"><use href="#i-mail"/></svg>hello@scars.rw</a>
+        </div>
+      </div>
+      <div class="footer__cols">
+        <div>
+          <a href="#top" class="logo logo--light">SCARS<span class="logo__dot" aria-hidden="true"></span></a>
+          <p class="footer__blurb">Car rental in Kigali, Rwanda. Self-drive, with driver, airport delivery.</p>
+        </div>
+        <nav aria-label="Rent">
+          <h3>Rent</h3>
+          <a href="#fleet">Our fleet</a><a href="#how">How it works</a><a href="#locations">Locations</a>
+        </nav>
+        <nav aria-label="Company">
+          <h3>Company</h3>
+          <a href="#about">About us</a><a href="#" data-wa>Business hire</a>
+        </nav>
+        <div>
+          <h3>Follow us</h3>
+          <div class="social">
+            <a href="#" aria-label="SCARS on Instagram"><svg class="ico" aria-hidden="true"><use href="#i-instagram"/></svg></a>
+            <a href="#" aria-label="SCARS on Facebook"><svg class="ico" aria-hidden="true"><use href="#i-facebook"/></svg></a>
+            <a href="#" data-wa aria-label="SCARS on WhatsApp"><svg class="ico" aria-hidden="true"><use href="#i-whatsapp"/></svg></a>
+          </div>
+        </div>
+      </div>
+      <div class="footer__bottom">
+        <span>© <span id="year"></span> SCARS Ltd. Kigali, Rwanda.</span>
+        <span>Privacy · Rental terms</span>
+      </div>
+    </div>
+  </footer>
+
+  <a href="#" class="wa-float" data-wa aria-label="Book on WhatsApp">
+    <svg class="ico" aria-hidden="true"><use href="#i-whatsapp"/></svg>
+  </a>
+
+  <script src="script.js"></script>
+</body>
+</html>
