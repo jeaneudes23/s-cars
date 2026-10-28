@@ -156,7 +156,7 @@ p { margin: 0 0 1rem; }
 /* ==========================================================================
    Hero
    ========================================================================== */
-.hero { position: relative; background: var(--sand); padding-top: clamp(40px, 7vw, 80px); overflow: hidden; }
+.hero { position: relative; background: var(--sand); padding-top: clamp(40px, 7vw, 80px); overflow-x: clip; }
 .hero__glow {
   position: absolute; width: 520px; height: 520px; left: -160px; top: 40px; border-radius: 50%;
   background: radial-gradient(circle, rgb(242 179 61 / .35), transparent 65%);
