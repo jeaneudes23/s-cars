@@ -308,13 +308,28 @@ export function ViewDialog({ title, open, onClose, onEdit, sections, image }: { 
   );
 }
 
-export function ConfirmDialog({ open, title, message, confirmLabel, onConfirm, onClose }: { open: boolean; title: string; message: React.ReactNode; confirmLabel: string; onConfirm: () => void; onClose: () => void }) {
+export function ConfirmDialog({ open, title, message, confirmLabel, onConfirm, onClose }: { open: boolean; title: string; message: React.ReactNode; confirmLabel: string; onConfirm: () => void | Promise<void>; onClose: () => void }) {
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function confirm() {
+    setBusy(true);
+    setError("");
+    try {
+      await onConfirm();
+    } catch (err) {
+      setError((err as Error).message);
+    }
+    setBusy(false);
+  }
+
   return (
-    <Dialog title={title} open={open} onClose={onClose}>
+    <Dialog title={title} open={open} onClose={() => { setError(""); onClose(); }}>
       <p className="a-confirm-text">{message}</p>
+      {error && <p className="a-error a-error--form" role="alert">{error}</p>}
       <div className="a-form-actions">
-        <button type="button" className="btn a-btn-ghost" onClick={onClose}>Cancel</button>
-        <button type="button" className="btn a-btn-danger" onClick={onConfirm}>{confirmLabel}</button>
+        <button type="button" className="btn a-btn-ghost" onClick={() => { setError(""); onClose(); }}>Cancel</button>
+        <button type="button" className="btn a-btn-danger" disabled={busy} onClick={confirm}>{busy ? "Working..." : confirmLabel}</button>
       </div>
     </Dialog>
   );

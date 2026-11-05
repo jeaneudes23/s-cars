@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Icon, type IconName } from "@/components/Icon";
-import { isLoggedIn, logout } from "@/lib/auth";
-import { DataProvider } from "./data";
+import { logout } from "@/lib/auth";
+import { DataGate, DataProvider } from "./data";
 import { ToastProvider } from "./ui";
 
 const NAV: { href: string; label: string; icon: IconName }[] = [
@@ -21,18 +21,9 @@ const NAV: { href: string; label: string; icon: IconName }[] = [
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const [ready, setReady] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  useEffect(() => {
-    if (isLoggedIn()) setReady(true);
-    else router.replace("/admin/login");
-  }, [router]);
-
   useEffect(() => { setMenuOpen(false); }, [pathname]);
-
-  if (!ready) return null;
 
   return (
     <ToastProvider>
@@ -58,15 +49,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 })}
               </nav>
               <div className="a-side__foot">
-                <p className="a-demo-note">Demo mode: data is saved only in this browser.</p>
                 <a href="/" className="a-side__link"><Icon name="globe" />View website</a>
-                <button type="button" className="a-side__link" onClick={() => { logout(); router.replace("/admin/login"); }}>
+                <button type="button" className="a-side__link" onClick={logout}>
                   <Icon name="logout" />Log out
                 </button>
               </div>
             </div>
           </aside>
-          <main className="a-main" id="admin-main">{children}</main>
+          <main className="a-main" id="admin-main"><DataGate>{children}</DataGate></main>
         </div>
       </DataProvider>
     </ToastProvider>

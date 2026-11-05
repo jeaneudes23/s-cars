@@ -33,7 +33,7 @@ export function Fleet() {
         {shown.map((c) => (
           <li className="car" key={c.id}>
             <div className="car__media">
-              <Image src={c.image} alt={c.name} width={900} height={600} sizes="(max-width: 640px) 100vw, 300px" unoptimized={c.image.startsWith("data:")} />
+              <Image src={c.image} alt={c.name} width={900} height={600} sizes="(max-width: 640px) 100vw, 300px" unoptimized={!c.image.startsWith("/images/")} />
               {c.tag && <span className="car__tag">{c.tag}</span>}
             </div>
             <div className="car__body">

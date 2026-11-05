@@ -1,21 +1,17 @@
-import { createHash, timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
+import { errorResponse } from "@/lib/server/api";
+import { login } from "@/lib/server/auth";
 
-const digest = (text: string) => createHash("sha256").update(text).digest();
-const matches = (a: string, b: string) => timingSafeEqual(digest(a), digest(b));
-
-// The credentials stay on the server: they come from .env and never reach the browser.
 export async function POST(request: Request) {
-  const { ADMIN_USERNAME, ADMIN_PASSWORD } = process.env;
-  if (!ADMIN_USERNAME || !ADMIN_PASSWORD) {
-    return NextResponse.json({ error: "Sign-in isn't set up. Add ADMIN_USERNAME and ADMIN_PASSWORD to the .env file." }, { status: 500 });
+  try {
+    const body = await request.json().catch(() => null);
+    const username = typeof body?.username === "string" ? body.username : "";
+    const password = typeof body?.password === "string" ? body.password : "";
+    const result = await login(username, password);
+    if (result === "ok") return NextResponse.json({ ok: true });
+    if (result === "locked") return NextResponse.json({ error: "Too many failed attempts. Try again in 15 minutes." }, { status: 429 });
+    return NextResponse.json({ error: "That username or password is wrong. Check them and try again." }, { status: 401 });
+  } catch (err) {
+    return errorResponse(err);
   }
-
-  const body = await request.json().catch(() => null);
-  const username = typeof body?.username === "string" ? body.username.trim() : "";
-  const password = typeof body?.password === "string" ? body.password : "";
-
-  const usernameOk = matches(username, ADMIN_USERNAME);
-  const passwordOk = matches(password, ADMIN_PASSWORD);
-  return NextResponse.json({ ok: usernameOk && passwordOk }, { status: usernameOk && passwordOk ? 200 : 401 });
 }

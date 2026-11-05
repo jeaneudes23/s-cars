@@ -3,9 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/Icon";
 import { WHATSAPP_NUMBER } from "@/lib/config";
-import { list } from "@/lib/db";
 import { daysBetween, formatDate, num, todayISO } from "@/lib/format";
-import { seedCars } from "@/lib/seed";
 import type { Car } from "@/lib/types";
 import { BookingFields } from "./HeroSearch";
 
@@ -23,23 +21,16 @@ type Value = {
 };
 
 const Context = createContext<Value | null>(null);
-const isListed = (c: Car) => c.showOnSite && c.status === "available";
 
 export function rentalDays(form: BookingForm) {
   if (!form.start || !form.end || form.start < todayISO() || form.end < form.start) return 0;
   return daysBetween(form.start, form.end);
 }
 
-export function BookingProvider({ children }: { children: React.ReactNode }) {
+export function BookingProvider({ cars, children }: { cars: Car[]; children: React.ReactNode }) {
   const [form, setForm] = useState<BookingForm>({ mode: "self-drive", carId: "", pickup: "", start: "", time: "", end: "" });
-  // Server renders the sample fleet; the browser then swaps in what the admin saved.
-  const [cars, setCars] = useState<Car[]>(seedCars.filter(isListed));
   const [open, setOpen] = useState(false);
   const dialog = useRef<HTMLDialogElement>(null);
-
-  useEffect(() => {
-    list("cars").then((rows) => setCars(rows.filter(isListed).sort((a, b) => a.pricePerDay - b.pricePerDay)));
-  }, []);
 
   useEffect(() => {
     const el = dialog.current;

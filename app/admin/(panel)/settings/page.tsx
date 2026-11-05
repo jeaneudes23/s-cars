@@ -1,21 +1,39 @@
 "use client";
 
-import { useState } from "react";
-import { useData } from "@/components/admin/data";
-import { ConfirmDialog, PageHeader, useToast } from "@/components/admin/ui";
-import { clearAll, resetToSample } from "@/lib/db";
+import { useEffect, useState } from "react";
+import { Field, PageHeader, useToast } from "@/components/admin/ui";
+import { currentUsername, updateCredentials } from "@/lib/auth";
 
 export default function SettingsPage() {
-  const { reload } = useData();
   const toast = useToast();
-  const [action, setAction] = useState<"reset" | "clear" | null>(null);
+  const [username, setUsername] = useState("");
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
 
-  async function runAction() {
-    if (action === "reset") await resetToSample();
-    if (action === "clear") await clearAll();
-    await reload();
-    toast(action === "reset" ? "Sample data restored." : "All records deleted.");
-    setAction(null);
+  useEffect(() => { currentUsername().then(setUsername); }, []);
+
+  async function saveCredentials(e: React.FormEvent) {
+    e.preventDefault();
+    const found: Record<string, string> = {};
+    if (!username.trim()) found.username = "Enter a username.";
+    if (!current) found.current = "Enter your current password.";
+    if (next && next.length < 8) found.next = "Use at least 8 characters.";
+    if (next !== confirm) found.confirm = "This doesn't match the new password.";
+    setErrors(found);
+    if (Object.keys(found).length) return;
+
+    setBusy(true);
+    const failed = await updateCredentials({ currentPassword: current, username, newPassword: next || undefined });
+    setBusy(false);
+    if (failed) {
+      setErrors({ [failed.field]: failed.message });
+      return;
+    }
+    setCurrent(""); setNext(""); setConfirm("");
+    toast(next ? "Username and password updated." : "Username updated.");
   }
 
   return (
@@ -24,26 +42,26 @@ export default function SettingsPage() {
 
       <section className="a-card a-section a-settings">
         <h2>Admin sign-in</h2>
-        <p className="a-muted">For now, the username and password are set in the project&apos;s .env file. To change them, edit ADMIN_USERNAME and ADMIN_PASSWORD there and restart the app.</p>
+        <p className="a-muted">Change the username or password used to open the admin. Leave the new password empty to keep it. A new password signs you out on every other device.</p>
+        <form className="a-form" onSubmit={saveCredentials} noValidate>
+          <Field label="Username" required wide error={errors.username}>
+            {(p) => <input {...p} className="a-input" autoComplete="username" value={username} onChange={(e) => setUsername(e.target.value)} />}
+          </Field>
+          <Field label="Current password" required wide error={errors.current}>
+            {(p) => <input {...p} className="a-input" type="password" autoComplete="current-password" value={current} onChange={(e) => setCurrent(e.target.value)} />}
+          </Field>
+          <Field label="New password" error={errors.next} hint="At least 8 characters.">
+            {(p) => <input {...p} className="a-input" type="password" autoComplete="new-password" value={next} onChange={(e) => setNext(e.target.value)} />}
+          </Field>
+          <Field label="Repeat new password" error={errors.confirm}>
+            {(p) => <input {...p} className="a-input" type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />}
+          </Field>
+          {errors.form && <p className="a-error a-error--form a-field--wide" role="alert">{errors.form}</p>}
+          <div className="a-field--wide a-form-actions">
+            <button type="submit" className="btn btn--dark" disabled={busy}>{busy ? "Saving..." : "Save changes"}</button>
+          </div>
+        </form>
       </section>
-
-      <section className="a-card a-section a-settings">
-        <h2>Demo data</h2>
-        <p className="a-muted">Everything is stored only in this browser until the backend is built. Clearing your browser data removes it.</p>
-        <div className="a-danger-actions">
-          <button type="button" className="btn a-btn-ghost" onClick={() => setAction("reset")}>Restore sample data</button>
-          <button type="button" className="btn a-btn-danger" onClick={() => setAction("clear")}>Delete all records</button>
-        </div>
-      </section>
-
-      <ConfirmDialog
-        open={!!action}
-        title={action === "reset" ? "Restore sample data?" : "Delete all records?"}
-        message={action === "reset" ? "Your cars, drivers, bookings, driver services and costs will be replaced with the sample set. This can't be undone." : "All cars, drivers, bookings, driver services and costs will be deleted, and the website's fleet will be empty. This can't be undone."}
-        confirmLabel={action === "reset" ? "Restore sample data" : "Delete everything"}
-        onClose={() => setAction(null)}
-        onConfirm={runAction}
-      />
     </>
   );
 }
