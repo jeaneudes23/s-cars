@@ -34,7 +34,6 @@
 .a-side nav a.is-active { background: var(--amber); color: var(--ink); font-weight: 600; }
 .a-side :focus-visible { outline-color: var(--amber); }
 .a-side__foot { margin-top: auto; padding-top: 16px; display: grid; gap: 2px; }
-.a-demo-note { font-size: .8125rem; line-height: 1.4; color: var(--night-soft); padding: 10px 12px; margin-bottom: 6px; border: 1px solid #333; border-radius: var(--radius-sm); }
 .a-menu-btn {
   display: none; width: 44px; height: 44px; border: 0; border-radius: var(--radius-sm);
   background: #262626; color: #fff; cursor: pointer; align-items: center; justify-content: center;

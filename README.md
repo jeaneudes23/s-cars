@@ -2,22 +2,26 @@
 
 Car rental website and admin for SCARS, Kigali. Built with Next.js.
 
+## Setup
+
+1. Create a free database at [MongoDB Atlas](https://www.mongodb.com/atlas) and copy its connection string.
+2. Copy `.env.example` to `.env` and fill it in.
+3. Run:
+
 ```bash
 npm install
+npm run seed
 npm run dev
 ```
 
 - Website: http://localhost:3000
 - Admin: http://localhost:3000/admin
-- Sign-in: set `ADMIN_USERNAME` and `ADMIN_PASSWORD` in `.env` (copy `.env.example`), then restart the app. `.env` is never committed.
 
-## Current stage: frontend only
+`npm run seed` adds the starting 8 cars to an empty database and does nothing otherwise.
 
-There is no backend yet apart from the sign-in check. Admin data is stored in the browser's localStorage, so:
+`ADMIN_USERNAME` and `ADMIN_PASSWORD` only create the admin on the first sign-in. After that, the sign-in lives in MongoDB and is changed under Admin > Settings.
 
-- Data exists only in the browser where it was entered.
-- The password is checked on the server, but the signed-in state is only a browser flag, so this is not secure. Don't put this on the public internet with real data.
-- Sample data is loaded on first open. Admin > Settings can restore it or delete it all.
+The live site on Vercel needs the same three values in its project settings.
 
 ## Where things are
 
@@ -27,10 +31,11 @@ There is no backend yet apart from the sign-in check. Admin data is stored in th
 | `app/admin` | Admin pages |
 | `components/admin/charts.tsx` | Dashboard charts |
 | `lib/config.ts` | WhatsApp number, contact details, pick-up places |
-| `lib/db.ts` | All data access. Replace these functions with API calls to add the backend |
-| `lib/auth.ts`, `app/api/admin/login` | Sign-in check against `.env`. Replace when the backend is added |
+| `lib/db.ts`, `lib/auth.ts` | How the browser talks to the server |
+| `lib/server/records.ts` | What each record may contain, car clashes, delete rules, photos |
+| `lib/server/auth.ts` | Passwords, sessions, sign-in lockout |
 | `lib/metrics.ts` | Revenue, profit and booking calculations |
-| `lib/seed.ts` | Sample data |
+| `scripts/seed-cars.mjs` | The starting fleet |
 
 ## How revenue is counted
 
