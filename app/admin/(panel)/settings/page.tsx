@@ -39,7 +39,7 @@ export default function SettingsPage() {
       <ConfirmDialog
         open={!!action}
         title={action === "reset" ? "Restore sample data?" : "Delete all records?"}
-        message={action === "reset" ? "Your cars, drivers, bookings, jobs and costs will be replaced with the sample set. This can't be undone." : "All cars, drivers, bookings, jobs and costs will be deleted, and the website's fleet will be empty. This can't be undone."}
+        message={action === "reset" ? "Your cars, drivers, bookings, driver services and costs will be replaced with the sample set. This can't be undone." : "All cars, drivers, bookings, driver services and costs will be deleted, and the website's fleet will be empty. This can't be undone."}
         confirmLabel={action === "reset" ? "Restore sample data" : "Delete everything"}
         onClose={() => setAction(null)}
         onConfirm={runAction}

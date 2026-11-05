@@ -13,7 +13,7 @@ const NAV: { href: string; label: string; icon: IconName }[] = [
   { href: "/admin/bookings", label: "Bookings", icon: "calendar" },
   { href: "/admin/cars", label: "Cars", icon: "car" },
   { href: "/admin/drivers", label: "Drivers", icon: "users" },
-  { href: "/admin/driver-jobs", label: "Driver jobs", icon: "steering" },
+  { href: "/admin/driver-services", label: "Driver services", icon: "steering" },
   { href: "/admin/costs", label: "Costs", icon: "receipt" },
   { href: "/admin/revenue", label: "Revenue", icon: "trend" },
   { href: "/admin/settings", label: "Settings", icon: "settings" },

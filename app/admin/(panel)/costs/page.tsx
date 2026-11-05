@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { useData } from "@/components/admin/data";
-import { AddButton, Badge, ConfirmDialog, DataTable, Dialog, Field, FormActions, IconButton, PageHeader, Segmented, Stat, useToast, type Tone } from "@/components/admin/ui";
+import { AddButton, Badge, ConfirmDialog, DataTable, Dialog, Field, FormActions, IconButton, PageHeader, SearchBox, Segmented, Stat, ViewDialog, useToast, type Tone } from "@/components/admin/ui";
 import { COST_LABELS } from "@/lib/config";
-import { formatDate, newId, rwf, todayISO } from "@/lib/format";
+import { formatDate, matchesSearch, newId, rwf, todayISO } from "@/lib/format";
 import { PERIODS, inRange, periodRange, sum, type PeriodKey } from "@/lib/metrics";
 import type { Cost, CostCategory } from "@/lib/types";
 
@@ -18,6 +18,8 @@ export default function CostsPage() {
   const [category, setCategory] = useState<"all" | CostCategory>("all");
   const [editing, setEditing] = useState<Cost | "new" | null>(null);
   const [deleting, setDeleting] = useState<Cost | null>(null);
+  const [viewing, setViewing] = useState<Cost | null>(null);
+  const [search, setSearch] = useState("");
   const today = todayISO();
 
   const inPeriod = useMemo(() => {
@@ -25,7 +27,12 @@ export default function CostsPage() {
     return costs.filter((c) => inRange(c.date, start, end)).sort((a, b) => b.date.localeCompare(a.date));
   }, [costs, period, today]);
 
-  const rows = inPeriod.filter((c) => category === "all" || c.category === category);
+  const rows = inPeriod
+    .filter((c) => category === "all" || c.category === category)
+    .filter((c) => {
+      const car = cars.find((x) => x.id === c.carId);
+      return matchesSearch(search, [c.description, car?.name ?? "General", car?.plate, COST_LABELS[c.category], formatDate(c.date)]);
+    });
 
   if (loading) return <p className="a-loading">Loading...</p>;
 
@@ -45,33 +52,46 @@ export default function CostsPage() {
         {CATEGORIES.map((c) => <Stat key={c} label={COST_LABELS[c]} value={rwf(sum(inPeriod.filter((x) => x.category === c), (x) => x.amount))} />)}
       </div>
 
+      <div className="a-toolbar">
+        <SearchBox label="Search costs" placeholder="Search description, car or type" value={search} onChange={setSearch} count={rows.length} />
+      </div>
+
       <section className="a-card">
         <DataTable
-          key={`${period}-${category}`}
           caption="Costs"
           rows={rows}
-          empty={<><p>No costs recorded for this selection.</p><AddButton label="Add cost" onClick={() => setEditing("new")} /></>}
+          empty={<><p>{search.trim() ? `No costs match "${search.trim()}" in this period.` : "No costs recorded for this selection."}</p><AddButton label="Add cost" onClick={() => setEditing("new")} /></>}
           columns={[
-            { label: "Date", render: (c) => formatDate(c.date) },
+            { label: "Date", sort: (c) => c.date, render: (c) => formatDate(c.date) },
             { label: "Type", render: (c) => <Badge tone={TONE[c.category]}>{COST_LABELS[c.category]}</Badge> },
-            { label: "Description", render: (c) => c.description },
-            { label: "Car", render: (c) => c.carId ? cars.find((x) => x.id === c.carId)?.name ?? "Removed car" : <span className="a-sub">General</span> },
-            { label: "Amount", align: "right", render: (c) => rwf(c.amount) },
+            { label: "Description and car", render: (c) => <>{c.description}<span className="a-sub">{c.carId ? cars.find((x) => x.id === c.carId)?.name ?? "Removed car" : "General"}</span></> },
+            { label: "Amount", align: "right", sort: (c) => c.amount, render: (c) => rwf(c.amount) },
             { label: "Actions", hideLabel: true, align: "right", render: (c) => (
               <div className="a-row-actions">
+                <IconButton icon="eye" label={`View cost: ${c.description}`} onClick={() => setViewing(c)} />
                 <IconButton icon="edit" label={`Edit cost: ${c.description}`} onClick={() => setEditing(c)} />
-                <IconButton icon="trash" danger label={`Delete cost: ${c.description}`} onClick={() => setDeleting(c)} />
               </div>
             ) },
           ]}
         />
       </section>
 
+      <ViewDialog
+        title="Cost details"
+        open={!!viewing}
+        onClose={() => setViewing(null)}
+        onEdit={() => { setEditing(viewing); setViewing(null); }}
+        sections={viewing ? [
+          { title: "Cost", items: [["Date", formatDate(viewing.date)], ["Type", COST_LABELS[viewing.category]], ["Description", viewing.description], ["Car", viewing.carId ? cars.find((c) => c.id === viewing.carId)?.name ?? "Removed car" : "General"], ["Amount", rwf(viewing.amount)]] },
+        ] : []}
+      />
+
       <Dialog title={editing === "new" ? "Add cost" : "Edit cost"} open={!!editing} onClose={() => setEditing(null)}>
         {editing && (
           <CostForm
             initial={editing === "new" ? null : editing}
             onCancel={() => setEditing(null)}
+            onDelete={editing === "new" ? undefined : () => { setDeleting(editing); setEditing(null); }}
             onSave={async (c) => { await save("costs", c); setEditing(null); toast("Cost saved."); }}
           />
         )}
@@ -89,7 +109,7 @@ export default function CostsPage() {
   );
 }
 
-function CostForm({ initial, onSave, onCancel }: { initial: Cost | null; onSave: (c: Cost) => Promise<void>; onCancel: () => void }) {
+function CostForm({ initial, onSave, onCancel, onDelete }: { initial: Cost | null; onSave: (c: Cost) => Promise<void>; onCancel: () => void; onDelete?: () => void }) {
   const { cars } = useData();
   const [form, setForm] = useState({
     date: initial?.date ?? todayISO(),
@@ -144,7 +164,7 @@ function CostForm({ initial, onSave, onCancel }: { initial: Cost | null; onSave:
       <Field label="Description" required wide error={errors.description}>
         {(p) => <input {...p} className="a-input" autoComplete="off" value={form.description} onChange={(e) => set({ description: e.target.value })} />}
       </Field>
-      <div className="a-field--wide"><FormActions onCancel={onCancel} submitLabel="Save cost" error={formError} /></div>
+      <div className="a-field--wide"><FormActions onCancel={onCancel} onDelete={onDelete} submitLabel="Save cost" error={formError} /></div>
     </form>
   );
 }

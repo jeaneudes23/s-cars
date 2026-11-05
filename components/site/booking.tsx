@@ -60,7 +60,7 @@ export function BookingProvider({ children }: { children: React.ReactNode }) {
   return (
     <Context.Provider value={value}>
       {children}
-      <dialog ref={dialog} className="book-dialog" aria-labelledby="bookDialogTitle" onClose={() => setOpen(false)}>
+      <dialog ref={dialog} className="book-dialog" aria-labelledby="bookDialogTitle" onCancel={(e) => { e.preventDefault(); setOpen(false); }}>
         {open && (
           <>
             <div className="book-dialog__head">

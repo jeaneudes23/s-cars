@@ -47,14 +47,10 @@ export default function DashboardPage() {
     const carName = (id: string) => cars.find((c) => c.id === id)?.name ?? "Removed car";
     const upcoming = [
       ...bookings.filter((b) => b.status === "booked").flatMap((b) => {
-        const service = b.driverId ? "With driver" : "Self-drive";
-        const shared = { service, car: carName(b.carId), customer: b.customer, total: bookingTotal(b) };
-        const pickUp = { ...shared, id: `${b.id}-out`, date: b.start, time: b.pickupTime, what: "Pick-up", place: b.driverId ? b.pickup : undefined };
-        // A driver's end date equal to the pick-up date means it isn't known yet.
-        if (b.driverId && b.end === b.start) return [pickUp];
-        return [pickUp, { ...shared, id: `${b.id}-back`, date: b.end, time: undefined, what: b.driverId ? "Last day" : "Return", place: undefined }];
+        const shared = { service: "Self-drive", car: carName(b.carId), customer: b.customer, total: bookingTotal(b), place: undefined as string | undefined, time: undefined as string | undefined };
+        return [{ ...shared, id: `${b.id}-out`, date: b.start, what: "Pick-up" }, { ...shared, id: `${b.id}-back`, date: b.end, what: "Return" }];
       }),
-      ...jobs.map((j) => ({ id: j.id, date: j.date, time: j.pickupTime, what: "Pick-up", service: j.type, car: "No car", customer: j.customer, place: j.pickup, total: j.amount })),
+      ...jobs.map((j) => ({ id: j.id, date: j.date, time: j.pickupTime, what: "Pick-up", service: j.type, car: j.carId ? carName(j.carId) : "No car recorded", customer: j.customer, place: j.pickup, total: j.amount })),
     ]
       .filter((m) => m.date >= today && m.date <= addDays(today, 7))
       // Within a day: pick-ups by time, then returns.
@@ -108,7 +104,7 @@ export default function DashboardPage() {
 
         <ChartCard
           title="Revenue by car"
-          summary={`Paid rental revenue per car. Highest: ${view.carRevenue[0]?.name ?? "none"}.`}
+          summary={`Paid revenue per car, from bookings and driver services. Highest: ${view.carRevenue[0]?.name ?? "none"}.`}
           table={{ head: ["Car", "Revenue"], rows: view.carRevenue.map((c) => [c.name, c.value]) }}
         >
           {view.carRevenue.length ? <RankedBars data={view.carRevenue} series="revenue" /> : <p className="a-chart-empty">No paid rentals in this period.</p>}
@@ -130,17 +126,19 @@ export default function DashboardPage() {
           <Link href="/admin/bookings" className="a-link">All bookings</Link>
         </div>
         <DataTable
-          caption="Pick-ups, returns and driver jobs in the next 7 days"
+          caption="Pick-ups, returns and driver services in the next 7 days"
           rows={view.upcoming}
           empty={<p>Nothing scheduled in the next 7 days.</p>}
           columns={[
-            { label: "Date", render: (m) => <>{formatDate(m.date)}{m.time && <span className="a-sub">at {m.time}</span>}</> },
-            { label: "Type", render: (m) => <Badge tone={m.what === "Pick-up" ? "info" : "muted"}>{m.what}</Badge> },
-            { label: "Service", render: (m) => m.service },
-            { label: "Car", render: (m) => m.car },
-            { label: "Customer", render: (m) => m.customer },
+            { label: "Date and type", sort: (m) => `${m.date}${m.what === "Pick-up" ? m.time ?? "00:00" : "99"}`, render: (m) => (
+              <div className="a-stack">
+                <span className="a-nowrap">{formatDate(m.date)}{m.time && ` at ${m.time}`}</span>
+                <Badge tone={m.what === "Pick-up" ? "info" : "muted"}>{m.what}</Badge>
+              </div>
+            ) },
+            { label: "Customer and car", render: (m) => <><strong>{m.customer}</strong><span className="a-line">{m.car}</span><span className="a-sub">{m.service}</span></> },
             { label: "Pick-up location", render: (m) => m.place || "-" },
-            { label: "Total", align: "right", render: (m) => rwf(m.total) },
+            { label: "Total", align: "right", sort: (m) => m.total, render: (m) => rwf(m.total) },
           ]}
         />
       </section>

@@ -1,8 +1,7 @@
 import { addDays, daysBetween, monthLabel, parseDate, toISO } from "./format";
 import type { Booking, Car, Cost, Driver, DriverJob } from "./types";
 
-export const rentalAmount = (b: Booking) => daysBetween(b.start, b.end) * b.dailyRate;
-export const bookingTotal = (b: Booking) => rentalAmount(b) + b.driverFee;
+export const bookingTotal = (b: Booking) => daysBetween(b.start, b.end) * b.dailyRate;
 
 export type BookingState = "Upcoming" | "On rent" | "Completed" | "Cancelled";
 
@@ -12,16 +11,17 @@ export function bookingState(b: Booking, today: string): BookingState {
   return b.start > today ? "Upcoming" : "On rent";
 }
 
-// True if a non-cancelled booking of this car overlaps the given dates.
-export function findOverlap(bookings: Booking[], carId: string, start: string, end: string, ignoreId?: string) {
-  return bookings.find(
-    (b) => b.id !== ignoreId && b.carId === carId && b.status !== "cancelled" && b.start <= end && start <= b.end,
-  );
+// What already holds this car on the given dates, if anything. Bookings and driver
+// services share the fleet; a driver service holds its car on its pick-up date.
+export function carClash(bookings: Booking[], jobs: DriverJob[], carId: string, start: string, end: string, ignoreId?: string) {
+  const booking = bookings.find((b) => b.id !== ignoreId && b.carId === carId && b.status !== "cancelled" && b.start <= end && start <= b.end);
+  if (booking) return { customer: booking.customer, start: booking.start, end: booking.end };
+  const job = jobs.find((j) => j.id !== ignoreId && j.carId === carId && start <= j.date && j.date <= end);
+  return job ? { customer: job.customer, start: job.date, end: job.date } : undefined;
 }
 
 // ---------------------------------------------------------------------------
 // Revenue: one entry per income line, dated on the day the work starts.
-// A booking with a driver gives two entries, so each source can be reported.
 // ---------------------------------------------------------------------------
 export type RevenueSource = "rental" | "driver";
 
@@ -46,13 +46,10 @@ export function revenueEntries(bookings: Booking[], jobs: DriverJob[], cars: Car
   for (const b of bookings) {
     if (b.status === "cancelled") continue;
     const ref = { kind: "booking" as const, id: b.id };
-    entries.push({ id: `${b.id}-rental`, date: b.start, source: "rental", description: carName(b.carId), customer: b.customer, amount: rentalAmount(b), paid: b.paid, carId: b.carId, ref });
-    if (b.driverId && b.driverFee > 0) {
-      entries.push({ id: `${b.id}-driver`, date: b.start, source: "driver", description: `${driverName(b.driverId)}, with ${carName(b.carId)}`, customer: b.customer, amount: b.driverFee, paid: b.paid, driverId: b.driverId, ref });
-    }
+    entries.push({ id: b.id, date: b.start, source: "rental", description: carName(b.carId), customer: b.customer, amount: bookingTotal(b), paid: b.paid, carId: b.carId, ref });
   }
   for (const j of jobs) {
-    entries.push({ id: j.id, date: j.date, source: "driver", description: `${driverName(j.driverId)}, ${j.type.toLowerCase()}`, customer: j.customer, amount: j.amount, paid: j.paid, driverId: j.driverId, ref: { kind: "job", id: j.id } });
+    entries.push({ id: j.id, date: j.date, source: "driver", description: `${driverName(j.driverId)}, ${j.type.toLowerCase()}`, customer: j.customer, amount: j.amount, paid: j.paid, carId: j.carId, driverId: j.driverId, ref: { kind: "job", id: j.id } });
   }
   return entries.sort((a, b) => b.date.localeCompare(a.date));
 }

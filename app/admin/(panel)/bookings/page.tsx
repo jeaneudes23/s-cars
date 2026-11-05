@@ -1,78 +1,114 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useData } from "@/components/admin/data";
-import { AddButton, Badge, Check, ConfirmDialog, DataTable, Dialog, Field, FormActions, IconButton, PageHeader, Segmented, useToast, type Tone } from "@/components/admin/ui";
-import { PICKUP_SUGGESTIONS } from "@/lib/config";
-import { addDays, daysBetween, formatDate, newId, num, rwf, todayISO } from "@/lib/format";
-import { bookingState, bookingTotal, findOverlap, type BookingState } from "@/lib/metrics";
+import { useData, useQuickSave } from "@/components/admin/data";
+import { AddButton, Badge, Check, ConfirmDialog, DataTable, Dialog, Field, FormActions, FormSection, IconButton, PAYMENT_OPTIONS, PageHeader, SearchBox, Segmented, StatusMenu, ViewDialog, useToast, type Tone } from "@/components/admin/ui";
+import { addDays, daysBetween, formatDate, matchesSearch, newId, num, rwf, todayISO } from "@/lib/format";
+import { bookingState, bookingTotal, carClash, type BookingState } from "@/lib/metrics";
 import type { Booking, BookingStatus } from "@/lib/types";
 
 const STATE_TONE: Record<BookingState, Tone> = { Upcoming: "info", "On rent": "warn", Completed: "good", Cancelled: "muted" };
 type Filter = "all" | BookingState;
+const STATUS_OPTIONS: { key: BookingStatus; label: string }[] = [{ key: "booked", label: "Booked" }, { key: "completed", label: "Completed" }, { key: "cancelled", label: "Cancelled" }];
 const FILTERS: Filter[] = ["all", "Upcoming", "On rent", "Completed", "Cancelled"];
 
 export default function BookingsPage() {
-  const { bookings, cars, drivers, loading, save, remove } = useData();
+  const { bookings, cars, jobs, loading, save, remove } = useData();
   const toast = useToast();
+  const quickSave = useQuickSave();
   const [filter, setFilter] = useState<Filter>("all");
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Booking | "new" | null>(null);
   const [deleting, setDeleting] = useState<Booking | null>(null);
+  const [viewing, setViewing] = useState<Booking | null>(null);
   const today = todayISO();
   const carName = (id: string) => cars.find((c) => c.id === id)?.name ?? "Removed car";
 
   const rows = useMemo(() => {
-    const q = search.trim().toLowerCase();
     return bookings
       .filter((b) => filter === "all" || bookingState(b, today) === filter)
-      .filter((b) => !q || b.customer.toLowerCase().includes(q) || carName(b.carId).toLowerCase().includes(q) || b.phone.includes(q))
+      .filter((b) => matchesSearch(search, [b.customer, b.phone, carName(b.carId), cars.find((c) => c.id === b.carId)?.plate, formatDate(b.start), b.notes]))
       .sort((a, b) => b.start.localeCompare(a.start));
   }, [bookings, cars, filter, search, today]);
+
+  function changeStatus(b: Booking, status: BookingStatus) {
+    // Reviving a cancelled booking needs its car to still be free.
+    const clash = b.status === "cancelled" && carClash(bookings, jobs, b.carId, b.start, b.end, b.id);
+    if (clash) {
+      toast(`${carName(b.carId)} is now taken by ${clash.customer}. Edit the booking to choose another car.`);
+      return;
+    }
+    quickSave("bookings", { ...b, status }, `${b.customer}: ${STATUS_OPTIONS.find((o) => o.key === status)?.label}`);
+  }
 
   if (loading) return <p className="a-loading">Loading...</p>;
 
   return (
     <>
-      <PageHeader title="Bookings" subtitle="Record each booking after confirming it on WhatsApp.">
+      <PageHeader title="Bookings" subtitle="Self-drive rentals. Record each one after confirming it on WhatsApp.">
         <AddButton label="Add booking" onClick={() => setEditing("new")} />
       </PageHeader>
 
       <div className="a-toolbar">
         <Segmented label="Filter by status" value={filter} onChange={setFilter} options={FILTERS.map((f) => ({ key: f, label: f === "all" ? "All" : f }))} />
-        <div className="a-search">
-          <label htmlFor="bookingSearch" className="sr-only">Search bookings</label>
-          <input id="bookingSearch" className="a-input" type="search" placeholder="Search customer, car or phone" value={search} onChange={(e) => setSearch(e.target.value)} />
-        </div>
+        <SearchBox label="Search bookings" placeholder="Search customer, car, plate or phone" value={search} onChange={setSearch} count={rows.length} />
       </div>
 
       <section className="a-card">
         <DataTable
           caption="Bookings"
           rows={rows}
-          empty={<><p>No bookings match.</p><AddButton label="Add booking" onClick={() => setEditing("new")} /></>}
+          empty={<><p>{search.trim() ? `No bookings match "${search.trim()}".` : "No bookings match."}</p><AddButton label="Add booking" onClick={() => setEditing("new")} /></>}
           columns={[
-            { label: "Customer", render: (b) => <><strong>{b.customer}</strong><span className="a-sub">{b.phone}</span></> },
-            { label: "Car", render: (b) => <>{carName(b.carId)}{b.driverId && <span className="a-sub">With {drivers.find((d) => d.id === b.driverId)?.name ?? "driver"}{b.pickup ? `, from ${b.pickup}` : ""}{b.pickupTime ? ` at ${b.pickupTime}` : ""}</span>}</> },
-            { label: "Dates", render: (b) => <>{formatDate(b.start)}<span className="a-sub">to {formatDate(b.end)} ({daysBetween(b.start, b.end)} days)</span></> },
-            { label: "Status", render: (b) => { const s = bookingState(b, today); return <Badge tone={STATE_TONE[s]}>{s}</Badge>; } },
-            { label: "Payment", render: (b) => b.status === "cancelled" ? <span className="a-sub">None</span> : <Badge tone={b.paid ? "good" : "bad"}>{b.paid ? "Paid" : "Unpaid"}</Badge> },
-            { label: "Total", align: "right", render: (b) => rwf(bookingTotal(b)) },
+            { label: "Customer and car", render: (b) => (
+              <>
+                <strong>{b.customer}</strong>
+                <span className="a-line">{carName(b.carId)}</span>
+                {b.phone && <span className="a-sub">{b.phone}</span>}
+              </>
+            ) },
+            { label: "Dates", sort: (b) => b.start, render: (b) => {
+              const days = daysBetween(b.start, b.end);
+              return <span className="a-nowrap">{formatDate(b.start)}<span className="a-sub">to {formatDate(b.end)}, {days} {days === 1 ? "day" : "days"}</span></span>;
+            } },
+            { label: "Status", render: (b) => {
+              const s = bookingState(b, today);
+              return <StatusMenu label={`Status of booking for ${b.customer}`} text={s} tone={STATE_TONE[s]} value={b.status} options={STATUS_OPTIONS} onChange={(status) => changeStatus(b, status)} />;
+            } },
+            { label: "Total and payment", align: "right", sort: bookingTotal, render: (b) => (
+              <div className="a-amount">
+                {rwf(bookingTotal(b))}
+                {b.status !== "cancelled" && <StatusMenu label={`Payment for ${b.customer}`} text={b.paid ? "Paid" : "Unpaid"} tone={b.paid ? "good" : "bad"} value={b.paid ? "paid" : "unpaid"} options={PAYMENT_OPTIONS} onChange={(v) => quickSave("bookings", { ...b, paid: v === "paid" }, `${b.customer}: ${v === "paid" ? "Paid" : "Unpaid"}`)} />}
+              </div>
+            ) },
             { label: "Actions", hideLabel: true, align: "right", render: (b) => (
               <div className="a-row-actions">
+                <IconButton icon="eye" label={`View booking for ${b.customer}`} onClick={() => setViewing(b)} />
                 <IconButton icon="edit" label={`Edit booking for ${b.customer}`} onClick={() => setEditing(b)} />
-                <IconButton icon="trash" danger label={`Delete booking for ${b.customer}`} onClick={() => setDeleting(b)} />
               </div>
             ) },
           ]}
         />
       </section>
 
+      <ViewDialog
+        title="Booking details"
+        open={!!viewing}
+        onClose={() => setViewing(null)}
+        onEdit={() => { setEditing(viewing); setViewing(null); }}
+        sections={viewing ? [
+          { title: "Customer", items: [["Name", viewing.customer], ["Phone", viewing.phone]] },
+          { title: "Rental", items: [["Car", carName(viewing.carId)], ["Number plate", cars.find((c) => c.id === viewing.carId)?.plate], ["Start date", formatDate(viewing.start)], ["Return date", formatDate(viewing.end)], ["Days", daysBetween(viewing.start, viewing.end)], ["Price per day", rwf(viewing.dailyRate)]] },
+          { title: "Status and payment", items: [["Status", bookingState(viewing, today)], ["Payment", viewing.status === "cancelled" ? "None due" : viewing.paid ? "Paid" : "Unpaid"], ["Total", rwf(bookingTotal(viewing))], ["Notes", viewing.notes]] },
+        ] : []}
+      />
+
       <Dialog title={editing === "new" ? "Add booking" : "Edit booking"} open={!!editing} onClose={() => setEditing(null)}>
         {editing && (
           <BookingForm
             initial={editing === "new" ? null : editing}
             onCancel={() => setEditing(null)}
+            onDelete={editing === "new" ? undefined : () => { setDeleting(editing); setEditing(null); }}
             onSave={async (b) => { await save("bookings", b); setEditing(null); toast("Booking saved."); }}
           />
         )}
@@ -90,23 +126,17 @@ export default function BookingsPage() {
   );
 }
 
-function BookingForm({ initial, onSave, onCancel }: { initial: Booking | null; onSave: (b: Booking) => Promise<void>; onCancel: () => void }) {
-  const { cars, drivers, bookings } = useData();
+function BookingForm({ initial, onSave, onCancel, onDelete }: { initial: Booking | null; onSave: (b: Booking) => Promise<void>; onCancel: () => void; onDelete?: () => void }) {
+  const { cars, jobs, bookings } = useData();
   const today = todayISO();
-  const selectable = cars.filter((c) => c.status !== "retired" || c.id === initial?.carId);
-  const firstCar = selectable[0];
 
   const [form, setForm] = useState({
     customer: initial?.customer ?? "",
     phone: initial?.phone ?? "",
-    carId: initial?.carId ?? firstCar?.id ?? "",
+    carId: initial?.carId ?? "",
     start: initial?.start ?? today,
     end: initial?.end ?? addDays(today, 3),
-    pickup: initial?.pickup ?? "",
-    pickupTime: initial?.pickupTime ?? "",
-    dailyRate: String(initial?.dailyRate ?? firstCar?.pricePerDay ?? ""),
-    driverId: initial?.driverId ?? "",
-    driverFee: String(initial?.driverFee ?? 0),
+    dailyRate: String(initial?.dailyRate ?? ""),
     status: (initial?.status ?? "booked") as BookingStatus,
     paid: initial?.paid ?? false,
     notes: initial?.notes ?? "",
@@ -116,35 +146,39 @@ function BookingForm({ initial, onSave, onCancel }: { initial: Booking | null; o
 
   const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }));
   const days = form.start && form.end && form.end >= form.start ? daysBetween(form.start, form.end) : 0;
-  const total = days * (Number(form.dailyRate) || 0) + (form.driverId ? Number(form.driverFee) || 0 : 0);
+  const total = days * (Number(form.dailyRate) || 0);
 
-  // Picking a car or driver, or changing dates, fills in their standard prices.
-  function feeFor(driverId: string, start: string, end: string) {
-    const rate = drivers.find((d) => d.id === driverId)?.dayRate ?? 0;
-    return String(end >= start ? rate * daysBetween(start, end) : 0);
+  // Cars that can take this booking: in service and free on the chosen dates.
+  function availableCars(start: string, end: string) {
+    return cars.filter((c) => {
+      if (c.status !== "available" && c.id !== initial?.carId) return false;
+      if (form.status === "cancelled" || !start || !end || end < start) return true;
+      return !carClash(bookings, jobs, c.id, start, end, initial?.id);
+    });
   }
+  const available = availableCars(form.start, form.end);
 
   function changeDates(patch: { start?: string; end?: string }) {
     const next = { ...form, ...patch };
-    set({ ...patch, driverFee: next.driverId ? feeFor(next.driverId, next.start, next.end) : form.driverFee });
+    const clearCar = !!form.carId && !availableCars(next.start, next.end).some((c) => c.id === form.carId);
+    set({ ...patch, carId: clearCar ? "" : form.carId, dailyRate: clearCar ? "" : form.dailyRate });
+    if (clearCar) setErrors((e) => ({ ...e, carId: "That car isn't free on these dates. Choose another." }));
   }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const next: Record<string, string> = {};
     if (!form.customer.trim()) next.customer = "Enter the customer's name.";
-    if (!form.carId) next.carId = "Add a car first, then record the booking.";
     if (!form.start) next.start = "Choose a start date.";
     if (!form.end) next.end = "Choose a return date.";
     else if (form.end < form.start) next.end = "Return can't be before the start date.";
+    if (!form.carId) next.carId = available.length ? "Choose a car." : "No cars are free on these dates. Change the dates to see others.";
     if (!(Number(form.dailyRate) >= 0) || form.dailyRate === "") next.dailyRate = "Enter the daily price in RWF.";
-    if (form.driverId && !form.pickup.trim()) next.pickup = "Enter where the driver picks the customer up.";
-    if (form.driverId && !form.pickupTime) next.pickupTime = "Enter what time the driver picks the customer up.";
-    if (form.driverId && !(Number(form.driverFee) >= 0)) next.driverFee = "Enter the driver fee in RWF.";
 
+    // Still checked on save, in case the status was changed back from cancelled.
     if (!next.carId && !next.end && form.status !== "cancelled") {
-      const clash = findOverlap(bookings, form.carId, form.start, form.end, initial?.id);
-      if (clash) next.carId = `This car is already booked by ${clash.customer} from ${formatDate(clash.start)} to ${formatDate(clash.end)}. Pick another car or change the dates.`;
+      const clash = carClash(bookings, jobs, form.carId, form.start, form.end, initial?.id);
+      if (clash) next.carId = `This car is already taken by ${clash.customer} from ${formatDate(clash.start)} to ${formatDate(clash.end)}. Pick another car or change the dates.`;
     }
     setErrors(next);
     if (Object.keys(next).length) return;
@@ -157,11 +191,7 @@ function BookingForm({ initial, onSave, onCancel }: { initial: Booking | null; o
         carId: form.carId,
         start: form.start,
         end: form.end,
-        pickup: form.driverId ? form.pickup.trim() : undefined,
-        pickupTime: form.driverId ? form.pickupTime : undefined,
         dailyRate: Number(form.dailyRate),
-        driverId: form.driverId || undefined,
-        driverFee: form.driverId ? Number(form.driverFee) : 0,
         status: form.status,
         paid: form.paid,
         notes: form.notes.trim() || undefined,
@@ -172,82 +202,62 @@ function BookingForm({ initial, onSave, onCancel }: { initial: Booking | null; o
   }
 
   return (
-    <form className="a-form" onSubmit={submit} noValidate>
-      <Field label="Customer name" required error={errors.customer}>
-        {(p) => <input {...p} className="a-input" autoComplete="off" value={form.customer} onChange={(e) => set({ customer: e.target.value })} />}
-      </Field>
-      <Field label="Phone">
-        {(p) => <input {...p} className="a-input" type="tel" autoComplete="off" value={form.phone} onChange={(e) => set({ phone: e.target.value })} />}
-      </Field>
-      <Field label="Car" required wide error={errors.carId}>
-        {(p) => (
-          <select {...p} className="a-input" value={form.carId} onChange={(e) => {
-            const car = cars.find((c) => c.id === e.target.value);
-            set({ carId: e.target.value, dailyRate: String(car?.pricePerDay ?? form.dailyRate) });
-          }}>
-            {selectable.map((c) => <option key={c.id} value={c.id}>{c.name}, {c.plate}{c.status === "maintenance" ? " (in maintenance)" : ""}</option>)}
-          </select>
-        )}
-      </Field>
-      <Field label={form.driverId ? "Pick-up date" : "Start date"} required error={errors.start}>
-        {(p) => <input {...p} className="a-input" type="date" value={form.start} onChange={(e) => changeDates({ start: e.target.value })} />}
-      </Field>
-      <Field label={form.driverId ? "Last day" : "Return date"} required error={errors.end} hint={form.driverId ? "Not known yet? Leave it as the pick-up date and update it later." : undefined}>
-        {(p) => <input {...p} className="a-input" type="date" min={form.start} value={form.end} onChange={(e) => changeDates({ end: e.target.value })} />}
-      </Field>
-      <Field label="Price per day (RWF)" required error={errors.dailyRate}>
-        {(p) => <input {...p} className="a-input" type="number" min="0" step="1000" inputMode="numeric" value={form.dailyRate} onChange={(e) => set({ dailyRate: e.target.value })} />}
-      </Field>
-      <Field label="Driver" hint="Leave empty for self-drive.">
-        {(p) => (
-          <select {...p} className="a-input" value={form.driverId} onChange={(e) => {
-            const driverId = e.target.value;
-            const end = driverId && !initial ? form.start : form.end;
-            set({ driverId, end, driverFee: driverId ? feeFor(driverId, form.start, end) : "0" });
-          }}>
-            <option value="">No driver</option>
-            {drivers.filter((d) => d.active || d.id === initial?.driverId).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-          </select>
-        )}
-      </Field>
-      <Field label="Driver fee (RWF)" error={errors.driverFee} hint={form.driverId ? "Total for the whole booking." : undefined}>
-        {(p) => <input {...p} className="a-input" type="number" min="0" step="1000" inputMode="numeric" disabled={!form.driverId} value={form.driverId ? form.driverFee : ""} onChange={(e) => set({ driverFee: e.target.value })} />}
-      </Field>
-      {form.driverId && (
-        <>
-          <Field label="Pick-up location" required error={errors.pickup} hint="Drop-off can be agreed later.">
-            {(p) => (
-              <>
-                <input {...p} className="a-input" list="bookingPlaces" autoComplete="off" value={form.pickup} onChange={(e) => set({ pickup: e.target.value })} />
-                <datalist id="bookingPlaces">{PICKUP_SUGGESTIONS.map((x) => <option key={x} value={x} />)}</datalist>
-              </>
-            )}
-          </Field>
-          <Field label="Pick-up time" required error={errors.pickupTime}>
-            {(p) => <input {...p} className="a-input" type="time" value={form.pickupTime} onChange={(e) => set({ pickupTime: e.target.value })} />}
-          </Field>
-        </>
-      )}
-      <Field label="Status">
-        {(p) => (
-          <select {...p} className="a-input" value={form.status} onChange={(e) => set({ status: e.target.value as BookingStatus })}>
-            <option value="booked">Booked</option>
-            <option value="completed">Completed</option>
-            <option value="cancelled">Cancelled</option>
-          </select>
-        )}
-      </Field>
-      <div className="a-field a-field--center">
-        <Check label="Customer has paid" checked={form.paid} onChange={(paid) => set({ paid })} />
-      </div>
-      <Field label="Notes" wide>
-        {(p) => <textarea {...p} className="a-input" rows={2} value={form.notes} onChange={(e) => set({ notes: e.target.value })} />}
-      </Field>
-      <p className="a-total a-field--wide">
-        <span>{days ? `${days} ${days === 1 ? "day" : "days"} × ${num(Number(form.dailyRate) || 0)}${form.driverId ? " + driver" : ""}` : "Total"}</span>
-        <strong>{rwf(total)}</strong>
-      </p>
-      <div className="a-field--wide"><FormActions onCancel={onCancel} submitLabel="Save booking" error={formError} /></div>
+    <form className="a-form-stack" onSubmit={submit} noValidate>
+      <FormSection title="Customer">
+        <Field label="Customer name" required error={errors.customer}>
+          {(p) => <input {...p} className="a-input" autoComplete="off" value={form.customer} onChange={(e) => set({ customer: e.target.value })} />}
+        </Field>
+        <Field label="Phone">
+          {(p) => <input {...p} className="a-input" type="tel" autoComplete="off" value={form.phone} onChange={(e) => set({ phone: e.target.value })} />}
+        </Field>
+      </FormSection>
+      <FormSection title="Dates">
+        <Field label="Start date" required error={errors.start}>
+          {(p) => <input {...p} className="a-input" type="date" value={form.start} onChange={(e) => changeDates({ start: e.target.value })} />}
+        </Field>
+        <Field label="Return date" required error={errors.end}>
+          {(p) => <input {...p} className="a-input" type="date" min={form.start} value={form.end} onChange={(e) => changeDates({ end: e.target.value })} />}
+        </Field>
+      </FormSection>
+      <FormSection title="Car">
+        <Field label="Car" required error={errors.carId} hint="Only cars free on these dates are listed.">
+          {(p) => (
+            <select {...p} className="a-input" value={form.carId} onChange={(e) => {
+              const car = cars.find((c) => c.id === e.target.value);
+              set({ carId: e.target.value, dailyRate: car ? String(car.pricePerDay) : "" });
+              setErrors((prev) => ({ ...prev, carId: "" }));
+            }}>
+              <option value="">{available.length ? `Choose a car (${available.length} free)` : "No cars free on these dates"}</option>
+              {available.map((c) => <option key={c.id} value={c.id}>{c.name}, {c.plate}</option>)}
+            </select>
+          )}
+        </Field>
+        <Field label="Price per day (RWF)" required error={errors.dailyRate}>
+          {(p) => <input {...p} className="a-input" type="number" min="0" step="1000" inputMode="numeric" value={form.dailyRate} onChange={(e) => set({ dailyRate: e.target.value })} />}
+        </Field>
+      </FormSection>
+      <FormSection title="Status and payment">
+        <Field label="Status">
+          {(p) => (
+            <select {...p} className="a-input" value={form.status} onChange={(e) => set({ status: e.target.value as BookingStatus })}>
+              <option value="booked">Booked</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          )}
+        </Field>
+        <div className="a-field a-field--center">
+          <Check label="Customer has paid" checked={form.paid} onChange={(paid) => set({ paid })} />
+        </div>
+        <Field label="Notes" wide>
+          {(p) => <textarea {...p} className="a-input" rows={2} value={form.notes} onChange={(e) => set({ notes: e.target.value })} />}
+        </Field>
+        <p className="a-total a-field--wide">
+          <span>{days ? `${days} ${days === 1 ? "day" : "days"} × ${num(Number(form.dailyRate) || 0)}` : "Total"}</span>
+          <strong>{rwf(total)}</strong>
+        </p>
+      </FormSection>
+      <FormActions onCancel={onCancel} onDelete={onDelete} submitLabel="Save booking" error={formError} />
     </form>
   );
 }

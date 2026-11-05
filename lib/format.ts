@@ -41,3 +41,15 @@ export function daysBetween(start: string, end: string) {
 }
 
 export const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+
+// Every word typed must appear somewhere in the record, in any order, ignoring case
+// and accents. Spaces are ignored too, so 788100 finds "+250 788 100 201".
+const plain = (text: string) => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+export function matchesSearch(query: string, fields: (string | number | undefined)[]) {
+  const words = plain(query).split(/\s+/).filter(Boolean);
+  if (!words.length) return true;
+  const text = plain(fields.filter((f) => f !== undefined && f !== "").join(" "));
+  const compact = text.replace(/\s+/g, "");
+  return words.every((w) => text.includes(w) || compact.includes(w));
+}

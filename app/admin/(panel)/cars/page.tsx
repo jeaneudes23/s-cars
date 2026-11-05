@@ -1,13 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { useData } from "@/components/admin/data";
-import { AddButton, Badge, Check, ConfirmDialog, DataTable, Dialog, Field, FormActions, IconButton, PageHeader, useToast } from "@/components/admin/ui";
+import { useData, useQuickSave } from "@/components/admin/data";
+import { AddButton, Badge, Check, ConfirmDialog, DataTable, Dialog, Field, FormActions, FormSection, IconButton, PageHeader, SearchBox, Segmented, StatusMenu, ViewDialog, useToast, type Tone } from "@/components/admin/ui";
 import { CATEGORY_LABELS } from "@/lib/config";
-import { newId, rwf, todayISO } from "@/lib/format";
-import { rentalAmount, sum } from "@/lib/metrics";
+import { matchesSearch, newId, rwf, todayISO } from "@/lib/format";
 import type { Car, CarCategory, CarStatus } from "@/lib/types";
 
+const STATUS_OPTIONS: { key: CarStatus; label: string }[] = [{ key: "available", label: "Available" }, { key: "maintenance", label: "In maintenance" }, { key: "retired", label: "Retired" }];
+const FILTERS = ["All", "Available", "On rent", "Maintenance", "Retired"];
 const PLACEHOLDER = "/images/hero.jpg";
 
 // Shrinks an uploaded photo so it fits in browser storage.
@@ -28,38 +29,54 @@ function resizePhoto(file: File): Promise<string> {
   });
 }
 
+function statusLook(c: Car, onRent: boolean): { text: string; tone: Tone } {
+  if (c.status === "retired") return { text: "Retired", tone: "muted" };
+  if (c.status === "maintenance") return { text: "Maintenance", tone: "bad" };
+  return onRent ? { text: "On rent", tone: "warn" } : { text: "Available", tone: "good" };
+}
+
 export default function CarsPage() {
-  const { cars, bookings, costs, loading, save, remove } = useData();
+  const { cars, bookings, jobs, costs, loading, save, remove } = useData();
   const toast = useToast();
+  const quickSave = useQuickSave();
   const [editing, setEditing] = useState<Car | "new" | null>(null);
   const [deleting, setDeleting] = useState<Car | null>(null);
+  const [viewing, setViewing] = useState<Car | null>(null);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("All");
+  const websiteLabel = (c: Car) => (c.showOnSite && c.status === "available" ? "On website" : "Not on website");
   const today = todayISO();
 
-  const stats = useMemo(() => new Map(cars.map((car) => {
-    const own = bookings.filter((b) => b.carId === car.id && b.status !== "cancelled");
-    return [car.id, {
-      count: own.length,
-      revenue: sum(own.filter((b) => b.paid), rentalAmount),
-      costs: sum(costs.filter((c) => c.carId === car.id), (c) => c.amount),
-      onRent: own.some((b) => b.status === "booked" && b.start <= today && b.end >= today),
-    }];
-  })), [cars, bookings, costs, today]);
+  // Cars out with a customer today, from either kind of record.
+  const onRent = useMemo(() => new Set([
+    ...bookings.filter((b) => b.status === "booked" && b.start <= today && b.end >= today).map((b) => b.carId),
+    ...jobs.filter((j) => j.date === today).map((j) => j.carId),
+  ]), [bookings, jobs, today]);
 
   if (loading) return <p className="a-loading">Loading...</p>;
 
-  const blocked = deleting && (bookings.some((b) => b.carId === deleting.id) || costs.some((c) => c.carId === deleting.id));
+  const rows = cars
+    .filter((c) => filter === "All" || statusLook(c, onRent.has(c.id)).text === filter)
+    .filter((c) => matchesSearch(search, [c.name, c.plate, CATEGORY_LABELS[c.category], c.cls, c.fuel, c.gear, statusLook(c, onRent.has(c.id)).text]));
+
+  const blocked = deleting && (bookings.some((b) => b.carId === deleting.id) || jobs.some((j) => j.carId === deleting.id) || costs.some((c) => c.carId === deleting.id));
 
   return (
     <>
-      <PageHeader title="Cars" subtitle="Cars marked as shown appear on the public website.">
+      <PageHeader title="Cars" subtitle="Your fleet. Available cars appear on the public website.">
         <AddButton label="Add car" onClick={() => setEditing("new")} />
       </PageHeader>
+
+      <div className="a-toolbar">
+        <Segmented label="Filter by status" value={filter} onChange={setFilter} options={FILTERS.map((f) => ({ key: f, label: f }))} />
+        <SearchBox label="Search cars" placeholder="Search name, plate or category" value={search} onChange={setSearch} count={rows.length} />
+      </div>
 
       <section className="a-card">
         <DataTable
           caption="Cars"
-          rows={cars}
-          empty={<><p>No cars yet. Add your first car to start taking bookings.</p><AddButton label="Add car" onClick={() => setEditing("new")} /></>}
+          rows={rows}
+          empty={<><p>{search.trim() ? `No cars match "${search.trim()}".` : filter !== "All" ? "No cars with this status." : "No cars yet. Add your first car to start taking bookings."}</p><AddButton label="Add car" onClick={() => setEditing("new")} /></>}
           columns={[
             { label: "Car", render: (c) => (
               <div className="a-car-cell">
@@ -67,30 +84,39 @@ export default function CarsPage() {
                 <div><strong>{c.name}</strong><span className="a-sub">{c.plate} · {CATEGORY_LABELS[c.category]}</span></div>
               </div>
             ) },
-            { label: "Status", render: (c) => {
-              if (c.status === "retired") return <Badge tone="muted">Retired</Badge>;
-              if (c.status === "maintenance") return <Badge tone="bad">Maintenance</Badge>;
-              return stats.get(c.id)?.onRent ? <Badge tone="warn">On rent</Badge> : <Badge tone="good">Available</Badge>;
-            } },
-            { label: "Website", render: (c) => c.showOnSite && c.status === "available" ? "Shown" : <span className="a-sub">Hidden</span> },
-            { label: "Price per day", align: "right", render: (c) => rwf(c.pricePerDay) },
-            { label: "Revenue", align: "right", render: (c) => rwf(stats.get(c.id)?.revenue ?? 0) },
-            { label: "Costs", align: "right", render: (c) => rwf(stats.get(c.id)?.costs ?? 0) },
+            { label: "Status", render: (c) => (
+              <StatusMenu label={`Status of ${c.name}`} {...statusLook(c, onRent.has(c.id))} value={c.status} options={STATUS_OPTIONS} onChange={(status) => quickSave("cars", { ...c, status }, `${c.name}: ${STATUS_OPTIONS.find((o) => o.key === status)?.label}`)} />
+            ) },
+            { label: "Price per day", align: "right", sort: (c) => c.pricePerDay, render: (c) => rwf(c.pricePerDay) },
             { label: "Actions", hideLabel: true, align: "right", render: (c) => (
               <div className="a-row-actions">
+                <IconButton icon="eye" label={`View ${c.name}`} onClick={() => setViewing(c)} />
                 <IconButton icon="edit" label={`Edit ${c.name}`} onClick={() => setEditing(c)} />
-                <IconButton icon="trash" danger label={`Delete ${c.name}`} onClick={() => setDeleting(c)} />
               </div>
             ) },
           ]}
         />
       </section>
 
+      <ViewDialog
+        title={viewing?.name ?? "Car details"}
+        open={!!viewing}
+        image={viewing?.image || undefined}
+        onClose={() => setViewing(null)}
+        onEdit={() => { setEditing(viewing); setViewing(null); }}
+        sections={viewing ? [
+          { title: "Car details", items: [["Number plate", viewing.plate], ["Category", CATEGORY_LABELS[viewing.category]], ["Status", statusLook(viewing, onRent.has(viewing.id)).text]] },
+          { title: "Specifications", items: [["Seats", viewing.seats], ["Bags", viewing.bags], ["Gearbox", viewing.gear], ["Fuel", viewing.fuel]] },
+          { title: "Website listing", items: [["Price per day", rwf(viewing.pricePerDay)], ["Description", viewing.cls], ["Label", viewing.tag || "None"], ["Website", websiteLabel(viewing)]] },
+        ] : []}
+      />
+
       <Dialog title={editing === "new" ? "Add car" : "Edit car"} open={!!editing} onClose={() => setEditing(null)}>
         {editing && (
           <CarForm
             initial={editing === "new" ? null : editing}
             onCancel={() => setEditing(null)}
+            onDelete={editing === "new" ? undefined : () => { setDeleting(editing); setEditing(null); }}
             onSave={async (car) => { await save("cars", car); setEditing(null); toast("Car saved."); }}
           />
         )}
@@ -98,7 +124,7 @@ export default function CarsPage() {
 
       {deleting && blocked ? (
         <Dialog title="This car can't be deleted" open onClose={() => setDeleting(null)}>
-          <p className="a-confirm-text">{deleting.name} has bookings or costs on record, and your reports need them. Set its status to Retired instead: it leaves the website and the booking form, and its history stays.</p>
+          <p className="a-confirm-text">{deleting.name} has bookings, driver services or costs on record, and your reports need them. Set its status to Retired instead: it leaves the website and the booking form, and its history stays.</p>
           <div className="a-form-actions">
             <button type="button" className="btn btn--dark" onClick={() => setDeleting(null)}>OK</button>
           </div>
@@ -117,7 +143,7 @@ export default function CarsPage() {
   );
 }
 
-function CarForm({ initial, onSave, onCancel }: { initial: Car | null; onSave: (car: Car) => Promise<void>; onCancel: () => void }) {
+function CarForm({ initial, onSave, onCancel, onDelete }: { initial: Car | null; onSave: (car: Car) => Promise<void>; onCancel: () => void; onDelete?: () => void }) {
   const [form, setForm] = useState({
     name: initial?.name ?? "",
     plate: initial?.plate ?? "",
@@ -181,70 +207,76 @@ function CarForm({ initial, onSave, onCancel }: { initial: Car | null; onSave: (
   }
 
   return (
-    <form className="a-form" onSubmit={submit} noValidate>
-      <Field label="Car name" required error={errors.name}>
-        {(p) => <input {...p} className="a-input" autoComplete="off" placeholder="Toyota RAV4" value={form.name} onChange={(e) => set({ name: e.target.value })} />}
-      </Field>
-      <Field label="Number plate" required error={errors.plate}>
-        {(p) => <input {...p} className="a-input" autoComplete="off" value={form.plate} onChange={(e) => set({ plate: e.target.value })} />}
-      </Field>
-      <Field label="Category">
-        {(p) => (
-          <select {...p} className="a-input" value={form.category} onChange={(e) => set({ category: e.target.value as CarCategory })}>
-            {(Object.keys(CATEGORY_LABELS) as CarCategory[]).map((k) => <option key={k} value={k}>{CATEGORY_LABELS[k]}</option>)}
-          </select>
+    <form className="a-form-stack" onSubmit={submit} noValidate>
+      <FormSection title="Car details">
+        <Field label="Car name" required error={errors.name}>
+          {(p) => <input {...p} className="a-input" autoComplete="off" placeholder="Toyota RAV4" value={form.name} onChange={(e) => set({ name: e.target.value })} />}
+        </Field>
+        <Field label="Number plate" required error={errors.plate}>
+          {(p) => <input {...p} className="a-input" autoComplete="off" value={form.plate} onChange={(e) => set({ plate: e.target.value })} />}
+        </Field>
+        <Field label="Category">
+          {(p) => (
+            <select {...p} className="a-input" value={form.category} onChange={(e) => set({ category: e.target.value as CarCategory })}>
+              {(Object.keys(CATEGORY_LABELS) as CarCategory[]).map((k) => <option key={k} value={k}>{CATEGORY_LABELS[k]}</option>)}
+            </select>
+          )}
+        </Field>
+        <Field label="Status">
+          {(p) => (
+            <select {...p} className="a-input" value={form.status} onChange={(e) => set({ status: e.target.value as CarStatus })}>
+              <option value="available">Available</option>
+              <option value="maintenance">In maintenance</option>
+              <option value="retired">Retired</option>
+            </select>
+          )}
+        </Field>
+      </FormSection>
+      <FormSection title="Specifications">
+        <Field label="Seats" required error={errors.seats}>
+          {(p) => <input {...p} className="a-input" type="number" min="1" inputMode="numeric" value={form.seats} onChange={(e) => set({ seats: e.target.value })} />}
+        </Field>
+        <Field label="Bags" required error={errors.bags}>
+          {(p) => <input {...p} className="a-input" type="number" min="0" inputMode="numeric" value={form.bags} onChange={(e) => set({ bags: e.target.value })} />}
+        </Field>
+        <Field label="Gearbox">
+          {(p) => (
+            <select {...p} className="a-input" value={form.gear} onChange={(e) => set({ gear: e.target.value as Car["gear"] })}>
+              <option>Automatic</option><option>Manual</option>
+            </select>
+          )}
+        </Field>
+        <Field label="Fuel">
+          {(p) => (
+            <select {...p} className="a-input" value={form.fuel} onChange={(e) => set({ fuel: e.target.value as Car["fuel"] })}>
+              <option>Petrol</option><option>Diesel</option><option>Hybrid</option><option>Electric</option>
+            </select>
+          )}
+        </Field>
+      </FormSection>
+      <FormSection title="Website listing">
+        <Field label="Price per day (RWF)" required error={errors.pricePerDay}>
+          {(p) => <input {...p} className="a-input" type="number" min="0" step="1000" inputMode="numeric" value={form.pricePerDay} onChange={(e) => set({ pricePerDay: e.target.value })} />}
+        </Field>
+        <Field label="Description" hint="Shown under the name on the website.">
+          {(p) => <input {...p} className="a-input" placeholder="Compact SUV" value={form.cls} onChange={(e) => set({ cls: e.target.value })} />}
+        </Field>
+        <Field label="Label" hint="Optional badge, e.g. Popular.">
+          {(p) => <input {...p} className="a-input" value={form.tag} onChange={(e) => set({ tag: e.target.value })} />}
+        </Field>
+        <Field label="Photo" error={errors.image} hint="JPG or PNG. Resized automatically.">
+          {(p) => <input {...p} className="a-input a-file" type="file" accept="image/*" onChange={(e) => choosePhoto(e.target.files?.[0])} />}
+        </Field>
+        {form.image && (
+          <div className="a-field--wide a-photo-preview">
+            <img src={form.image} alt="Selected car" width={120} height={80} />
+          </div>
         )}
-      </Field>
-      <Field label="Description" hint="Shown under the name on the website.">
-        {(p) => <input {...p} className="a-input" placeholder="Compact SUV" value={form.cls} onChange={(e) => set({ cls: e.target.value })} />}
-      </Field>
-      <Field label="Seats" required error={errors.seats}>
-        {(p) => <input {...p} className="a-input" type="number" min="1" inputMode="numeric" value={form.seats} onChange={(e) => set({ seats: e.target.value })} />}
-      </Field>
-      <Field label="Bags" required error={errors.bags}>
-        {(p) => <input {...p} className="a-input" type="number" min="0" inputMode="numeric" value={form.bags} onChange={(e) => set({ bags: e.target.value })} />}
-      </Field>
-      <Field label="Gearbox">
-        {(p) => (
-          <select {...p} className="a-input" value={form.gear} onChange={(e) => set({ gear: e.target.value as Car["gear"] })}>
-            <option>Automatic</option><option>Manual</option>
-          </select>
-        )}
-      </Field>
-      <Field label="Fuel">
-        {(p) => (
-          <select {...p} className="a-input" value={form.fuel} onChange={(e) => set({ fuel: e.target.value as Car["fuel"] })}>
-            <option>Petrol</option><option>Diesel</option><option>Hybrid</option><option>Electric</option>
-          </select>
-        )}
-      </Field>
-      <Field label="Price per day (RWF)" required error={errors.pricePerDay}>
-        {(p) => <input {...p} className="a-input" type="number" min="0" step="1000" inputMode="numeric" value={form.pricePerDay} onChange={(e) => set({ pricePerDay: e.target.value })} />}
-      </Field>
-      <Field label="Status">
-        {(p) => (
-          <select {...p} className="a-input" value={form.status} onChange={(e) => set({ status: e.target.value as CarStatus })}>
-            <option value="available">Available</option>
-            <option value="maintenance">In maintenance</option>
-            <option value="retired">Retired</option>
-          </select>
-        )}
-      </Field>
-      <Field label="Label" hint="Optional badge, e.g. Popular.">
-        {(p) => <input {...p} className="a-input" value={form.tag} onChange={(e) => set({ tag: e.target.value })} />}
-      </Field>
-      <Field label="Photo" error={errors.image} hint="JPG or PNG. Resized automatically.">
-        {(p) => <input {...p} className="a-input a-file" type="file" accept="image/*" onChange={(e) => choosePhoto(e.target.files?.[0])} />}
-      </Field>
-      {form.image && (
-        <div className="a-field--wide a-photo-preview">
-          <img src={form.image} alt="Selected car" width={120} height={80} />
+        <div className="a-field--wide">
+          <Check label="Show on the website when available" checked={form.showOnSite} onChange={(showOnSite) => set({ showOnSite })} />
         </div>
-      )}
-      <div className="a-field--wide">
-        <Check label="Show on the website when available" checked={form.showOnSite} onChange={(showOnSite) => set({ showOnSite })} />
-      </div>
-      <div className="a-field--wide"><FormActions onCancel={onCancel} submitLabel="Save car" error={formError} /></div>
+      </FormSection>
+      <FormActions onCancel={onCancel} onDelete={onDelete} submitLabel="Save car" error={formError} />
     </form>
   );
 }

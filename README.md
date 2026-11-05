@@ -34,4 +34,4 @@ There is no backend yet apart from the sign-in check. Admin data is stored in th
 
 ## How revenue is counted
 
-Only paid records count as revenue, dated on the day the rental or job starts. Unpaid records that have started show as Unpaid. Cancelled bookings count for nothing.
+Only paid records count as revenue, dated on the day the rental or driver service starts. Unpaid records that have started show as Unpaid. Cancelled bookings count for nothing.

@@ -1,4 +1,4 @@
-import { addDays, daysBetween, todayISO } from "./format";
+import { addDays, todayISO } from "./format";
 import type { Booking, Car, Cost, Driver, DriverJob } from "./types";
 
 // Sample data so the admin isn't empty on first open. All of it is invented.
@@ -56,9 +56,6 @@ export function buildSeed() {
     let n = 0;
     while (cursor < addDays(today, 14)) {
       const end = addDays(cursor, between(2, 7));
-      const hasDriver = rand() < 0.25;
-      const driver = pick(active);
-      const days = daysBetween(cursor, end);
       const finished = end < today;
       const cancelled = rand() < 0.05;
       bookings.push({
@@ -68,11 +65,7 @@ export function buildSeed() {
         carId: car.id,
         start: cursor,
         end,
-        pickup: hasDriver ? pick(PLACES) : undefined,
-        pickupTime: hasDriver ? pick(TIMES) : undefined,
         dailyRate: car.pricePerDay,
-        driverId: hasDriver ? driver.id : undefined,
-        driverFee: hasDriver ? days * driver.dayRate : 0,
         status: cancelled ? "cancelled" : finished ? "completed" : "booked",
         paid: !cancelled && (end < addDays(today, -30) || rand() > 0.3),
       });
@@ -80,23 +73,35 @@ export function buildSeed() {
     }
   });
 
-  // Monthly driver jobs and costs for the past 12 months.
+  // A car that nothing else holds on this date, so sample services never clash.
+  const freeCar = (date: string) => seedCars.filter((c) =>
+    !bookings.some((b) => b.carId === c.id && b.status !== "cancelled" && b.start <= date && date <= b.end)
+    && !jobs.some((j) => j.carId === c.id && j.date === date));
+
+  function addService(id: string, date: string) {
+    const free = freeCar(date);
+    if (!free.length) return;
+    jobs.push({
+      id,
+      driverId: pick(active).id,
+      carId: pick(free).id,
+      date,
+      type: pick(JOBS),
+      pickup: pick(PLACES),
+      pickupTime: pick(TIMES),
+      customer: pick(CUSTOMERS),
+      phone: `+250 78${between(0, 9)} ${between(100, 999)} ${between(100, 999)}`,
+      amount: round(between(40000, 180000), 5000),
+      paid: date > today ? rand() > 0.5 : rand() > 0.08,
+    });
+  }
+
+  for (const offset of [1, 3, 5]) addService(`j-next-${offset}`, addDays(today, offset));
+
+  // Monthly driver services and costs for the past 12 months.
   for (let m = 0; m < 12; m++) {
     const monthEnd = addDays(today, -m * 30);
-    for (let j = 0; j < between(4, 8); j++) {
-      const date = addDays(monthEnd, -between(0, 29));
-      jobs.push({
-        id: `j-${m}-${j}`,
-        driverId: pick(active).id,
-        date,
-        type: pick(JOBS),
-        pickup: pick(PLACES),
-        pickupTime: pick(TIMES),
-        customer: pick(CUSTOMERS),
-        amount: round(between(15000, 60000), 5000),
-        paid: rand() > 0.08,
-      });
-    }
+    for (let j = 0; j < between(4, 8); j++) addService(`j-${m}-${j}`, addDays(monthEnd, -between(0, 29)));
     seedCars.forEach((car, c) => {
       costs.push({
         id: `f-${m}-${c}`,

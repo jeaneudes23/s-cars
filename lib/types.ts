@@ -36,25 +36,24 @@ export type Booking = {
   carId: string;
   start: string; // YYYY-MM-DD
   end: string;
-  pickup?: string; // only when there is a driver
-  pickupTime?: string; // HH:MM, only when there is a driver
   dailyRate: number;
-  driverId?: string;
-  driverFee: number;
   status: BookingStatus;
   paid: boolean;
   notes?: string;
 };
 
-// A driver hired without a car, e.g. an airport transfer in the customer's car.
+// A driver hired with one of the fleet's cars. Separate from bookings, which are
+// self-drive rentals; the two only share the cars.
 export type DriverJob = {
   id: string;
   driverId: string;
+  carId?: string; // empty only on older records
   date: string;
   type: string;
   pickup?: string;
   pickupTime?: string; // HH:MM
   customer: string;
+  phone?: string;
   amount: number;
   paid: boolean;
   notes?: string;
