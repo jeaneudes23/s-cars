@@ -1,1 +1,7 @@
+node_modules/
+.next/
+next-env.d.ts
+*.tsbuildinfo
 .claude/
+.env*
+!.env.example

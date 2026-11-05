@@ -1,0 +1,108 @@
+/* ==========================================================================
+   SCARS — design tokens
+   ========================================================================== */
+:root {
+  color-scheme: light;
+
+  --sand: #EFEAE2;          /* page / hero background */
+  --sand-deep: #E5DED2;
+  --surface: #FFFFFF;
+  --ink: #141414;           /* text + dark surfaces */
+  --ink-soft: #4A4740;      /* secondary text, 8.5:1 on sand */
+  --line: #DAD3C6;
+  --amber: #F2B33D;         /* brand accent, ink text on it = 10:1 */
+  --amber-deep: #E39E1B;
+  --night: #161616;         /* footer */
+  --night-soft: #B9B4AA;
+
+  --font-display: var(--font-unbounded), "Arial Black", sans-serif;
+  --font-body: var(--font-outfit), system-ui, sans-serif;
+
+  --radius-sm: 8px;
+  --radius: 14px;
+  --radius-lg: 24px;
+  --shadow: 0 10px 30px -12px rgb(20 20 20 / 0.25);
+  --shadow-lg: 0 24px 60px -20px rgb(20 20 20 / 0.35);
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --t-fast: 160ms;
+  --t: 280ms;
+
+  --z-nav: 40;
+  --z-float: 50;
+}
+
+/* ==========================================================================
+   Base
+   ========================================================================== */
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 88px; -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  color: var(--ink);
+  background: var(--surface);
+  overflow-x: hidden;
+}
+img { display: block; max-width: 100%; height: auto; }
+a { color: inherit; }
+button, input, select { font: inherit; color: inherit; }
+h1, h2, h3 { margin: 0; line-height: 1.1; }
+p { margin: 0 0 1rem; }
+
+.container { width: min(1200px, 100% - 32px); margin-inline: auto; }
+.section { padding-block: clamp(64px, 10vw, 120px); }
+.center { text-align: center; }
+
+.display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  text-wrap: balance;
+}
+.h2 { font-size: clamp(1.75rem, 4vw, 2.75rem); margin-bottom: 1.25rem; }
+.eyebrow {
+  font-weight: 600; font-size: .875rem; letter-spacing: .12em; text-transform: uppercase;
+  color: var(--ink-soft); margin-bottom: .75rem;
+}
+
+.ico { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.skip-link {
+  position: absolute; left: 16px; top: -60px; z-index: 100;
+  background: var(--ink); color: #fff; padding: 10px 16px; border-radius: var(--radius-sm);
+}
+.skip-link:focus { top: 16px; }
+
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; border-radius: 4px; }
+.footer :focus-visible, .btn--dark:focus-visible { outline-color: var(--amber); }
+
+/* ==========================================================================
+   Buttons
+   ========================================================================== */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 44px; padding: 10px 20px;
+  border: 0; border-radius: var(--radius-sm);
+  font-weight: 600; font-size: .9375rem; text-decoration: none; cursor: pointer;
+  transition: transform var(--t-fast) var(--ease-out), background-color var(--t-fast), box-shadow var(--t-fast);
+  touch-action: manipulation;
+}
+.btn:active { transform: scale(.97); }
+.btn--amber { background: var(--amber); color: var(--ink); }
+.btn--amber:hover { background: var(--amber-deep); }
+.btn--dark { background: var(--ink); color: #fff; }
+.btn--dark:hover { background: #2b2b2b; box-shadow: var(--shadow); }
+.btn--lg { min-height: 52px; padding: 14px 24px; font-size: 1rem; }
+
+/* Logo */
+.logo {
+  font-family: var(--font-display); font-weight: 800; font-size: 1.375rem;
+  letter-spacing: .02em; text-decoration: none; display: inline-flex; align-items: flex-end; gap: 3px;
+}
+.logo__dot { width: 8px; height: 8px; border-radius: 50%; background: var(--amber); margin-bottom: 6px; }
+.logo--light { color: #fff; }
